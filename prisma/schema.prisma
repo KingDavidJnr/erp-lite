@@ -1,0 +1,233 @@
+generator client {
+  provider               = "prisma-client-js"
+  output                 = "../src/generated/prisma"
+  emitTypes              = "false"
+  generatedFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Branch {
+  id               String              @id @default(uuid()) @db.Uuid
+  name             String
+  location         String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  auditLogs        AuditLog[]
+  customers        Customer[]
+  customerBalances CustomerBalance[]
+  expenses         Expense[]
+  inventoryItems   InventoryItem[]
+  inventoryMoves   InventoryMovement[]
+  payments         Payment[]
+  sales            Sale[]
+  users            User[]
+  writeOffs        WriteOff[]
+}
+
+model User {
+  id         BigInt     @id @default(autoincrement())
+  branchId   String?    @db.Uuid
+  firstName  String
+  lastName   String
+  username   String     @unique
+  password   String
+  role       UserRole
+  firstLogin Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  auditLogs  AuditLog[]
+  expenses   Expense[]
+  payments   Payment[]
+  sales      Sale[]
+  branch     Branch?    @relation(fields: [branchId], references: [id])
+  writeOffs  WriteOff[]
+}
+
+model Customer {
+  id        String              @id @default(uuid()) @db.Uuid
+  branchId  String              @db.Uuid
+  name      String
+  phone     String
+  email     String?
+  address   String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  branch    Branch              @relation(fields: [branchId], references: [id])
+  balances  CustomerBalance[]
+  payments  Payment[]
+  returns   ReturnTransaction[]
+  sales     Sale[]
+}
+
+model InventoryItem {
+  id                String              @id @default(uuid()) @db.Uuid
+  branchId          String              @db.Uuid
+  name              String
+  costPrice         Decimal?            @db.Decimal(14, 2)
+  sellingPrice      Decimal             @db.Decimal(14, 2)
+  quantity          Decimal             @db.Decimal(12, 3)
+  lowStockThreshold Decimal             @db.Decimal(12, 3)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  branch            Branch              @relation(fields: [branchId], references: [id])
+  inventoryMoves    InventoryMovement[]
+  saleItems         SaleItem[]
+  writeOffs         WriteOff[]
+}
+
+model InventoryMovement {
+  id              String                @id @default(uuid()) @db.Uuid
+  branchId        String                @db.Uuid
+  inventoryItemId String?                @db.Uuid
+  type            InventoryMovementType
+  quantity        Decimal               @db.Decimal(12, 3)
+  referenceId     String?               @db.Uuid
+  note            String?
+  transactionDate DateTime              @default(now())
+  createdAt       DateTime              @default(now())
+  branch          Branch                @relation(fields: [branchId], references: [id])
+  inventoryItem   InventoryItem?         @relation(fields: [inventoryItemId], references: [id])
+}
+
+model WriteOff {
+  id              String        @id @default(uuid()) @db.Uuid
+  branchId        String        @db.Uuid
+  inventoryItemId String        @db.Uuid
+  quantity        Decimal       @db.Decimal(12, 3)
+  reason          String
+  createdBy       BigInt
+  createdAt       DateTime      @default(now())
+  branch          Branch        @relation(fields: [branchId], references: [id])
+  user            User          @relation(fields: [createdBy], references: [id])
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+}
+
+model Sale {
+  id          String     @id @default(uuid()) @db.Uuid
+  branchId    String     @db.Uuid
+  customerId  String?    @db.Uuid
+  saleDate    DateTime
+  totalAmount Decimal    @db.Decimal(14, 2)
+  status      SaleStatus
+  note        String?
+  createdBy   BigInt
+  createdAt   DateTime   @default(now())
+  payments    Payment[]
+  branch      Branch     @relation(fields: [branchId], references: [id])
+  user        User       @relation(fields: [createdBy], references: [id])
+  customer    Customer?  @relation(fields: [customerId], references: [id])
+  saleItems   SaleItem[]
+}
+
+model SaleItem {
+  id              String              @id @default(uuid()) @db.Uuid
+  branchId        String              @db.Uuid
+  saleId          String              @db.Uuid
+  inventoryItemId String?             @db.Uuid
+  name            String?
+  quantity        Decimal             @db.Decimal(12, 3)
+  unitPrice       Decimal             @db.Decimal(14, 2)
+  subtotal        Decimal             @db.Decimal(14, 2)
+  isRemoved       Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  returns         ReturnTransaction[]
+  inventoryItem   InventoryItem?      @relation(fields: [inventoryItemId], references: [id])
+  sale            Sale                @relation(fields: [saleId], references: [id])
+}
+
+model ReturnTransaction {
+  id         String   @id @default(uuid()) @db.Uuid
+  branchId   String   @db.Uuid
+  saleItemId String   @db.Uuid
+  customerId String   @db.Uuid
+  returnDate DateTime
+  quantity   Decimal  @db.Decimal(12, 3)
+  note       String?
+  createdBy  BigInt
+  createdAt  DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id])
+  saleItem   SaleItem @relation(fields: [saleItemId], references: [id])
+}
+
+model Payment {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  customerId  String   @db.Uuid
+  saleId      String?  @db.Uuid
+  amount      Decimal  @db.Decimal(14, 2)
+  paymentDate DateTime
+  note        String?
+  receiptUrl  String?
+  createdBy   BigInt
+  createdAt   DateTime @default(now())
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  user        User     @relation(fields: [createdBy], references: [id])
+  customer    Customer @relation(fields: [customerId], references: [id])
+  sale        Sale?    @relation(fields: [saleId], references: [id])
+}
+
+model CustomerBalance {
+  branchId      String   @db.Uuid
+  customerId    String   @db.Uuid
+  totalSales    Decimal  @db.Decimal(14, 2)
+  totalPayments Decimal  @db.Decimal(14, 2)
+  overage       Decimal  @db.Decimal(14, 2)
+  currentDebt   Decimal  @db.Decimal(14, 2)
+  updatedAt     DateTime @updatedAt
+  branch        Branch   @relation(fields: [branchId], references: [id])
+  customer      Customer @relation(fields: [customerId], references: [id])
+
+  @@id([branchId, customerId])
+}
+
+model Expense {
+  id          String   @id @default(uuid()) @db.Uuid
+  branchId    String   @db.Uuid
+  category    String
+  amount      Decimal  @db.Decimal(14, 2)
+  note        String?
+  expenseDate DateTime
+  createdBy   BigInt
+  createdAt   DateTime @default(now())
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  user        User     @relation(fields: [createdBy], references: [id])
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  branchId      String   @db.Uuid
+  userId        BigInt
+  module        String
+  action        String
+  referenceType String?
+  referenceId   String?  @db.Uuid
+  createdAt     DateTime @default(now())
+  branch        Branch   @relation(fields: [branchId], references: [id])
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+enum UserRole {
+  GENERAL_ADMIN
+  BRANCH_ADMIN
+  BRANCH_MEMBER
+  BRANCH_VIEWER
+  GENERAL_VIEWER
+}
+
+enum InventoryMovementType {
+  ADD
+  SALE
+  REDUCE
+  RETURN
+  WRITE_OFF
+  FIELD_SALE
+}
+
+enum SaleStatus {
+  COMPLETED
+  REDUCED
+  RETURNED
+}
