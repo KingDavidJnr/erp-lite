@@ -25,9 +25,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
     origin: [
-      "https://bbayo.monesize.com",
-      "https://bbayo.vercel.app",
-      "https://bbayo.lovable.app",
       "http://localhost:8080",
     ],
     credentials: true, // Allow cookies and authentication headers
@@ -51,7 +48,7 @@ app.get("/", (req, res) => {
 
 // simple route to check API version
 app.get("/v1", (req, res) => {
-  res.status(200).send("BBayo Backend API v1.0.0 is up and running!");
+  res.status(200).send("ERP Lite Backend API v1.0.0 is up and running!");
 });
 
 // Get the port from environment variables (default to 4141 if not set)

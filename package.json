@@ -1,7 +1,7 @@
 {
-  "name": "bbayo-backend",
+  "name": "erp-lite",
   "version": "1.0.0",
-  "description": "Backend API services for BBayo custom dashboard app",
+  "description": "Backend API services for ERP Lite",
   "main": "index.js",
   "type": "module",
   "scripts": {
