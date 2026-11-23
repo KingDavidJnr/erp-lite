@@ -1,4 +1,5 @@
 import prisma from "../../lib/prisma.js";
+import { Prisma } from "../../generated/prisma/index.js";
 
 class SalesService {
   // List sales for a branch with optional date filtering

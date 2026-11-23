@@ -1,6 +1,6 @@
-# BBayo Backend
+# ERP Lite Backend
 
-BBayo Backend is a multi-branch enterprise inventory, sales, and accounting system. It is designed for single-tenant enterprise customers with custom workflows. The backend is built with **Express.js**, **Prisma ORM**, and **PostgreSQL**. It features branch isolation, role-based access control, audit logs, and comprehensive reporting.
+ERP Lite Backend is a multi-branch enterprise inventory, sales, and accounting system. It is designed for single-tenant enterprise customers with custom workflows. The backend is built with **Express.js**, **Prisma ORM**, and **PostgreSQL**. It features branch isolation, role-based access control, audit logs, and comprehensive reporting.
 
 ---
 
@@ -48,8 +48,8 @@ BBayo Backend is a multi-branch enterprise inventory, sales, and accounting syst
 1. Clone the repository
 
 ```bash
-git clone https://github.com/monesize/bbayo-Backend.git
-cd bbayo-Backend
+git clone https://github.com/**redacted**/erp-lite.git
+cd erp-lite
 ````
 
 2. Install dependencies
@@ -80,7 +80,7 @@ Create a `.env` file at the root with the following variables:
 
 ```env
 DATABASE_URL=postgresql://user:password@host:port/dbname
-PORT=5000
+PORT=4000
 JWT_SECRET=your_jwt_secret
 ```
 
