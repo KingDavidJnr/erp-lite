@@ -145,5 +145,5 @@ async function recordReturn(f, quantity) {
 
 
 afterAll(async () => {
-  await prisma.disconnect();
+  await prisma.$disconnect();
 })
