@@ -2,7 +2,6 @@ import "dotenv/config";
 import { test, afterAll } from "@jest/globals";
 import assert from "node:assert/strict";
 
-
 if (!process.env.DATABASE_URL) {
   throw new Error("Set DATABASE_URL to a dedicated test database");
 }
@@ -142,7 +141,77 @@ async function recordReturn(f, quantity) {
   );
 }
 
+test("sales returns enforce cumulative quantity limits", async () => {
+  const f = await createFixture()
 
+  try {
+    await recordReturn(f, 2)
+
+    let inventory = await prisma.inventoryItem.findUnique({
+      where: {id: f.inventoryItemId}
+    })
+
+    assert.equal(Number(inventory.quantity), 12)
+
+    await recordReturn(f, 3)
+
+    inventory = await prisma.inventoryItem.findUnique({
+      where: {id: f.inventoryItemId}
+    })
+    assert.equal(Number(inventory.quantity), 15)
+
+    await assert.rejects(
+      recordReturn(f, 0.001),
+      /Return quantity exceeds remaining quantity/,
+    )
+
+    inventory = await prisma.inventoryItem.findUnique({
+      where: {id: f.inventoryItemId}
+    })
+    assert.equal(Number(inventory.quantity), 15)
+
+    assert.equal(
+      await prisma.returnTransaction.count({
+        where: {saleItemId: f.saleItemId}
+      }), 2
+    )
+  } finally {
+    await cleanupFixture(f)
+  }
+})
+
+test("concurrent returns cannot exceed the original sold quantity", async () => {
+  const f = await createFixture()
+
+  try {
+    const results = await Promise.allSettled([
+      recordReturn(f, 3),
+      recordReturn(f, 3)
+    ])
+
+    assert.equal(
+      results.filter((result) => result.status === "fulfilled").length, 1
+    )
+
+    assert.equal(
+      results.filter((result) => result.status === "rejected").length, 1
+    )
+
+    const inventory = await prisma.inventoryItem.findUnique({
+      where: {id: f.inventoryItemId}
+    })
+
+    assert.equal(Number(inventory.quantity), 13)
+
+    assert.equal(
+      await prisma.returnTransaction.count({
+        where: {saleItemId: f.saleItemId}
+      }), 1
+    )
+  } finally {
+    await cleanupFixture(f)
+  }
+})
 
 afterAll(async () => {
   await prisma.$disconnect();

@@ -218,11 +218,17 @@ class SalesService {
     });
   }
 
-  // Record Return (Later date)
+  // Record Return (Later date) - fixing
   async recordReturn(saleItemId, branchId, userId, userName, data) {
     const { quantity, returnDate, note } = data;
+    const requestedQuantity = new Prisma.Decimal(quantity)
 
     return prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+      SELECT id from "SaleItem"
+      WHERE id = ${saleItemId}::uuid
+      FOR UPDATE`;
+
       const item = await tx.saleItem.findUnique({
         where: { id: saleItemId },
         include: { sale: true },
@@ -230,13 +236,24 @@ class SalesService {
 
       if (!item) throw new Error("Sale item not found");
 
+      const previousReturns = await tx.returnTransaction.aggregate({
+        where: {saleItemId},
+        _sum: {quantity: true}
+      })
+
+      const alreadyReturned = previousReturns._sum.quantity ?? new Prisma.Decimal(0)
+
+      if (requestedQuantity.lte(0) || alreadyReturned.plus(requestedQuantity).gt(item.quantity)) {
+        throw new Error("Return quantity exceeds remaining quantity")
+      }
+
       const returnTx = await tx.returnTransaction.create({
         data: {
           branchId,
           saleItemId,
           customerId: item.sale.customerId,
           returnDate: new Date(returnDate),
-          quantity: Number(quantity),
+          quantity: requestedQuantity,
           note,
           createdBy: userId,
         },
@@ -246,7 +263,7 @@ class SalesService {
       if (item.inventoryItemId) {
         await tx.inventoryItem.update({
           where: { id: item.inventoryItemId },
-          data: { quantity: { increment: Number(quantity) } },
+          data: { quantity: { increment: requestedQuantity } },
         });
 
         await tx.inventoryMovement.create({
@@ -254,7 +271,7 @@ class SalesService {
             branchId,
             inventoryItemId: item.inventoryItemId,
             type: "RETURN",
-            quantity: Number(quantity),
+            quantity: requestedQuantity,
             referenceId: returnTx.id,
             note: `Later-date return: ${note}`,
             transactionDate: new Date(returnDate),
